@@ -109,6 +109,7 @@ def read_record(file)
             p "[#{i}]field_id: #{field_id}, field_size: #{field_size}"
         end
 
+        # TODO: Use the checksum
         checksum = file.readbyte() + file.readbyte()
         return if checksum == -1
         
