@@ -58,18 +58,18 @@ FORMAT_ID_THRESHOLD_POWER        = 40
 # Format helper classes
 
 class BinField
-    def initialize
+    def initialize(id, size)
         @num = 0
-        @id = 0
-        @size = 0  # in bytes
+        @id = id
+        @size = size  # in bytes
     end
 
     attr_accessor :num, :id, :size
 end
 
 class BinDefinition
-    def initialize
-        @format_id = 0
+    def initialize(id)
+        @format_id = id
         @fields = []
     end
 
@@ -97,10 +97,29 @@ def read_record(file)
         return if format_id == -1
 
         p "format_id: #{format_id}"
+
+        bin_def = BinDefinition.new(:id => format_id)
+
+        nb_meta = file.readbyte() + file.readbyte()
+        for i in 0...nb_meta
+            field_id = file.readbyte() + file.readbyte()
+            field_size = file.readbyte() + file.readbyte()
+#           bin_field = BinField.new(file.readbyte() + file.readbyte(),
+#                                    file.readbyte() + file.readbyte())
+            p "[#{i}]field_id: #{field_id}, field_size: #{field_size}"
+        end
+
+        checksum = file.readbyte() + file.readbyte()
+        return if checksum == -1
+        
+        p "checksum : #{checksum}"
+
     else
         # todo... sniff out record type.
         p "unknown record type: #{record_type}"
     end
+
+    puts ""
 end
 
 def parse_ride_file(file)
@@ -113,6 +132,13 @@ def parse_ride_file(file)
     p "bytes_read: #{bytes_read}"
 
     read_record(file)
+    read_record(file)
+    read_record(file)
+    read_record(file)
+    read_record(file)
+    read_record(file)
+    read_record(file)
+
 end
 
 bin_file = open('20121129_193201.bin', 'rb') { |f| parse_ride_file(f) }
