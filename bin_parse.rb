@@ -92,7 +92,7 @@ def read_record(file)
     record_type = file.readbyte()
     return if record_type == -1
 
-    if record_type == 255
+    if record_type == 255  # Header information
         format_id = file.readbyte()
         return if format_id == -1
 
@@ -118,6 +118,8 @@ def read_record(file)
     else
         # todo... sniff out record type.
         p "unknown record type: #{record_type}"
+
+            ### TODO ---> Left off right here....
     end
 
     puts ""
@@ -132,6 +134,7 @@ def parse_ride_file(file)
     p "data_size: #{data_size}"
     p "bytes_read: #{bytes_read}"
 
+    read_record(file)
     read_record(file)
     read_record(file)
     read_record(file)
