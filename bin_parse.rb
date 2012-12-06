@@ -96,16 +96,13 @@ def read_record(file)
         format_id = file.readbyte()
         return if format_id == -1
 
-        p "format_id: #{format_id}"
-
         bin_def = BinDefinition.new(:id => format_id)
 
         nb_meta = file.readbyte() + file.readbyte()
         for i in 0...nb_meta
             field_id = file.readbyte() + file.readbyte()
             field_size = file.readbyte() + file.readbyte()
-#           bin_field = BinField.new(file.readbyte() + file.readbyte(),
-#                                    file.readbyte() + file.readbyte())
+            bin_def.fields.push(BinField.new(field_id, field_size))
             p "[#{i}]field_id: #{field_id}, field_size: #{field_size}"
         end
 
@@ -115,11 +112,15 @@ def read_record(file)
         
         p "checksum : #{checksum}"
 
-    else
-        # todo... sniff out record type.
-        p "unknown record type: #{record_type}"
+    else  # Rest of workout data
+        format_id = record_type
 
-            ### TODO ---> Left off right here....
+        ### XXX kreegeer:
+        #       Left off right here... (line ~658 of BinRideFile.cpp)
+        #       The implementation already has a few BinDefinition instances
+        #       setup for the raw data. Do something like that.
+        bin_def = BinDefinition.new(:id => format_id)
+        
     end
 
     puts ""
