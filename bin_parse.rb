@@ -79,18 +79,60 @@ end
 ####################################################################################################
 # Parsing methods
 
-def decode_metadata(bin_def, data)
+def decode_metadata(bin_def, values)
+    # I really hate this method... but let's follow the pattern for now.
+    index = 0
     bin_def.fields.each do |field|
-        #
-        #
-        # XXX Left off right here - should try and follow the pattern that the golden cheetah
-        #     crap is using.
-        #
-        #
+        # TODO: Actually parse out the data for these fields.
+        case field.id
+            when FORMAT_ID_RIDE_START
+            when FORMAT_ID_RIDE_SAMPLE_RATE
+            when FORMAT_ID_FIRMWARE_VERSION
+            when FORMAT_ID_LAST_UPDATE
+            when FORMAT_ID_ODOMETER
+            when FORMAT_ID_PRIMARY_POWER_ID
+            when FORMAT_ID_SECONDARY_POWER_ID
+            when FORMAT_ID_CHEST_STRAP_ID
+            when FORMAT_ID_CADENCE_ID
+            when FORMAT_ID_SPEED_ID
+            when FORMAT_ID_RESISTANCE_UNITID
+        end
     end
 end
 
-def decode_ridedata()
+def decode_ridedata(bin_def, values)
+    ride_data = {}
+    index = 0
+    bin_def.fields.each do |field|
+        value = values[index]
+        ++index
+        case field.id
+            when FORMAT_ID_RIDE_DISTANCE
+                ride_data[:distance] = value / 10000.0
+            when FORMAT_ID_RIDE_TIME
+                ride_data[:seconds] = value / 1000.0
+            when FORMAT_ID_POWER
+                ride_data[:power] = value unless value > 3000
+            when FORMAT_ID_TORQUE
+                ride_data[:torque] = value
+            when FORMAT_ID_SPEED
+                kph = value * 3.6 / 100.0
+                kph = 0 if kph > 145
+                ride_data[:speed] = kph
+            when FORMAT_ID_CADENCE
+                ride_data[:cadence] = value unless value > 255
+            when FORMAT_ID_HEART_RATE
+                ride_data[:heart_rate] = value unless value > 255
+            when FORMAT_ID_GRADE
+                value = value - 256 * 256 if value > 37768
+                ride_data[:grade] = value / 100.0
+            when FORMAT_ID_ALTITUDE
+                # TODO
+            when FORMAT_ID_ALTITUDE_OLD
+                # TODO
+        end
+    end
+    p ride_data
 end
 
 def read_date(file)
@@ -134,17 +176,17 @@ def read_record(file, format_defs)
         format_id = record_type
         cur_def = format_defs[format_id];
 
+        values = []
         cur_def.fields.each do |field|
-            value = nil
             case field.size
                 when 1
-                    value = file.readbyte()
+                    values.push(file.readbyte())
                 when 2
-                    value = file.readbyte() + file.readbyte()
+                    values.push(file.readbyte() + file.readbyte())
                 when 4
-                    value = file.readbyte() + file.readbyte() + file.readbyte() + file.readbyte()
+                    values.push(file.readbyte() + file.readbyte() + file.readbyte() + file.readbyte())
                 when 7
-                    value = read_date(file)
+                    values.push(read_date(file))
             end
         end
 
@@ -155,19 +197,19 @@ def read_record(file, format_defs)
         # Now convert the raw data
         case format_id
             when RECORD_TYPE_META
-                p " record type meta"
+                decode_metadata(cur_def, values)
             when RECORD_TYPE_RIDE_DATA
-                p " record type ride data"
-            when RECORD_TYPE_RAW_DATA
-                p "Unused data...?"
-            when RECORD_TYPE_SPARSE_DATA
-                p "record type sparse"
-            when RECORD_TYPE_INTERVAL_DATA
-                p "record type interval"
-            when RECORD_TYPE_DATA_ERROR
-                p "record type data error"
-            when RECORD_TYPE_HISTORY
-                p "record type history"
+                decode_ridedata(cur_def, values)
+#            when RECORD_TYPE_RAW_DATA
+#                p "Unused data...?"
+#            when RECORD_TYPE_SPARSE_DATA
+#                p "record type sparse"
+#            when RECORD_TYPE_INTERVAL_DATA
+#                p "record type interval"
+#            when RECORD_TYPE_DATA_ERROR
+#                p "record type data error"
+#            when RECORD_TYPE_HISTORY
+#                p "record type history"
         end
     end
 end
