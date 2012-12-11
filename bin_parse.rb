@@ -79,13 +79,32 @@ end
 ####################################################################################################
 # Parsing methods
 
-def decode_metadata()
+def decode_metadata(bin_def, data)
+    bin_def.fields.each do |field|
+        #
+        #
+        # XXX Left off right here - should try and follow the pattern that the golden cheetah
+        #     crap is using.
+        #
+        #
+    end
 end
 
 def decode_ridedata()
 end
 
-def read_record(file)
+def read_date(file)
+    data = file.readbyte() +
+           file.readbyte() +
+           file.readbyte() +
+           file.readbyte() +
+           file.readbyte() +
+           file.readbyte() +
+           file.readbyte()
+    data
+end
+
+def read_record(file, format_defs)
     sum = 0
     bytes_read = 0
 
@@ -103,46 +122,65 @@ def read_record(file)
             field_id = file.readbyte() + file.readbyte()
             field_size = file.readbyte() + file.readbyte()
             bin_def.fields.push(BinField.new(field_id, field_size))
-            p "[#{i}]field_id: #{field_id}, field_size: #{field_size}"
         end
 
         # TODO: Use the checksum
         checksum = file.readbyte() + file.readbyte()
         return if checksum == -1
-        
-        p "checksum : #{checksum}"
+
+        format_defs[format_id] = bin_def
 
     else  # Rest of workout data
         format_id = record_type
+        cur_def = format_defs[format_id];
 
-        ### XXX kreegeer:
-        #       Left off right here... (line ~658 of BinRideFile.cpp)
-        #       The implementation already has a few BinDefinition instances
-        #       setup for the raw data. Do something like that.
-        bin_def = BinDefinition.new(:id => format_id)
-        
+        cur_def.fields.each do |field|
+            value = nil
+            case field.size
+                when 1
+                    value = file.readbyte()
+                when 2
+                    value = file.readbyte() + file.readbyte()
+                when 4
+                    value = file.readbyte() + file.readbyte() + file.readbyte() + file.readbyte()
+                when 7
+                    value = read_date(file)
+            end
+        end
+
+        # TODO: Use the checksum
+        checksum = file.readbyte() + file.readbyte()
+        return if checksum == -1
+
+        # Now convert the raw data
+        case format_id
+            when RECORD_TYPE_META
+                p " record type meta"
+            when RECORD_TYPE_RIDE_DATA
+                p " record type ride data"
+            when RECORD_TYPE_RAW_DATA
+                p "Unused data...?"
+            when RECORD_TYPE_SPARSE_DATA
+                p "record type sparse"
+            when RECORD_TYPE_INTERVAL_DATA
+                p "record type interval"
+            when RECORD_TYPE_DATA_ERROR
+                p "record type data error"
+            when RECORD_TYPE_HISTORY
+                p "record type history"
+        end
     end
-
-    puts ""
 end
 
 def parse_ride_file(file)
     data_size = File.size(file)
     bytes_read = 0
 
-    local_format_identifiers = {}
+    format_defs = {}
 
-    p "data_size: #{data_size}"
-    p "bytes_read: #{bytes_read}"
-
-    read_record(file)
-    read_record(file)
-    read_record(file)
-    read_record(file)
-    read_record(file)
-    read_record(file)
-    read_record(file)
-    read_record(file)
+    while !file.eof
+        read_record(file, format_defs)
+    end
 
 end
 
