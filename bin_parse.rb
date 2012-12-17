@@ -132,7 +132,7 @@ def decode_ridedata(bin_def, values)
                 # TODO
         end
     end
-    p ride_data
+    #p ride_data
 end
 
 def read_date(file)
@@ -144,6 +144,25 @@ def read_date(file)
            file.readbyte() +
            file.readbyte()
     data
+end
+
+def read_double_byte(file)
+    b1 = file.readbyte() * 256
+    b2 = file.readbyte()
+    b1 + b2
+end
+
+def read_four_byte(file)
+    b1 = file.readbyte() * 256 * 256 * 256
+    b2 = file.readbyte() * 256 * 256
+    b3 = file.readbyte() * 256
+    b4 = file.readbyte()
+    b1 + b2 + b3 + b4
+end
+
+def read_7_bytes(file)
+    # Hack for now
+    read_date(file)
 end
 
 def read_record(file, format_defs)
@@ -176,30 +195,58 @@ def read_record(file, format_defs)
         format_id = record_type
         cur_def = format_defs[format_id];
 
-        values = []
+        ride_data = {}
         cur_def.fields.each do |field|
+            value = 0        
             case field.size
                 when 1
-                    values.push(file.readbyte())
+                    value = file.readbyte()
                 when 2
-                    values.push(file.readbyte() + file.readbyte())
+                    value = read_double_byte(file)
                 when 4
-                    values.push(file.readbyte() + file.readbyte() + file.readbyte() + file.readbyte())
+                    value = read_four_byte(file)
                 when 7
-                    values.push(read_date(file))
+                    value = read_date(file)
+            end
+
+            case field.id
+                when FORMAT_ID_RIDE_DISTANCE
+                    ride_data[:distance] = value / 10000.0
+                when FORMAT_ID_RIDE_TIME
+                    ride_data[:seconds] = value / 1000.0
+                when FORMAT_ID_POWER
+                    ride_data[:power] = value unless value > 3000
+                when FORMAT_ID_TORQUE
+                    ride_data[:torque] = value
+                when FORMAT_ID_SPEED
+                    kph = value * 3.6 / 100.0
+                    kph = 0 if kph > 145
+                    ride_data[:speed] = kph
+                when FORMAT_ID_CADENCE
+                    ride_data[:cadence] = value unless value > 255
+                when FORMAT_ID_HEART_RATE
+                    ride_data[:heart_rate] = value unless value > 254
+                when FORMAT_ID_GRADE
+                    value = value - 256 * 256 if value > 37768
+                    ride_data[:grade] = value / 100.0
+                when FORMAT_ID_ALTITUDE
+                    # TODO
+                when FORMAT_ID_ALTITUDE_OLD
+                    # TODO
             end
         end
+        p ride_data
 
         # TODO: Use the checksum
         checksum = file.readbyte() + file.readbyte()
         return if checksum == -1
 
         # Now convert the raw data
-        case format_id
-            when RECORD_TYPE_META
-                decode_metadata(cur_def, values)
-            when RECORD_TYPE_RIDE_DATA
-                decode_ridedata(cur_def, values)
+#        case format_id
+#            when RECORD_TYPE_META
+#                decode_metadata(cur_def, values)
+#            when RECORD_TYPE_RIDE_DATA
+#                decode_ridedata(cur_def, values)
 #            when RECORD_TYPE_RAW_DATA
 #                p "Unused data...?"
 #            when RECORD_TYPE_SPARSE_DATA
@@ -210,7 +257,7 @@ def read_record(file, format_defs)
 #                p "record type data error"
 #            when RECORD_TYPE_HISTORY
 #                p "record type history"
-        end
+        #end
     end
 end
 
